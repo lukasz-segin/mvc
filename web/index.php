@@ -1,12 +1,57 @@
 <?php
-  $controller = isset($_GET['controller']) ? $_GET['controller'] : 'home';
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
+require __DIR__ . '/../vendor/autoload.php';
 
-  $dir = __DIR__ . '/../src/app/controllers/';
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing;
 
-  if(file_exists($dir . $controller . '.php')) {
-    require $dir . $controller . '.php';
-  } else {
-    header('HTTP/1.0 404 Not Found');
-    echo '404';
-  }
+$request = Request::createFromGlobals();
+$routes = include __DIR__ . '/../src/app/routes.php';
+
+$context = new Routing\RequestContext();
+$context->fromRequest($request);
+$matcher = new Routing\Matcher\UrlMatcher($routes, $context);
+
+$response = new Response();
+
+try {
+  extract($matcher->match($request->getPathInfo()), EXTR_SKIP);
+
+  ob_start();
+  include sprintf(__DIR__ . '/../src/app/controllers/%s.php', $_route);
+} catch(Routing\Exception\RouteNotFoundException $e) {
+  $response->setStatusCode(404);
+  $response->setContent($e->getMessage());
+} catch(Exception $e) {
+  $response->setStatusCode(500);
+  $response->setContent($e->getMessage());
+}
+
+$response->send();
+
+//$path = $request->getPathInfo();
+//
+//$response = new Response();
+//
+//$dir = __DIR__ . '/../src/app/controllers/%s.php';
+//
+//$map = array(
+//  '/home' => 'home',
+//  '/list' => 'list'
+//);
+//
+//
+//if(isset($map[$path])) {
+//  ob_start();
+//  require sprintf($dir, $map[$path]);
+//  $response->setContent(ob_get_clean());
+//} else {
+//  $response->setStatusCode(404);
+//  $response->setContent('Nie ma takiej strony');
+//}
+//
+//$response->send();
